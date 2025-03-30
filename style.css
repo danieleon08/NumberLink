@@ -1,57 +1,140 @@
 body {
-    font-family: Arial, sans-serif;
-    text-align: center;
-    background-color: #f0f4f8;
-    padding: 20px;
-  }
-  
-  h1 {
-    margin-bottom: 20px;
-  }
-  
-  .grid-container {
-    display: grid;
-    grid-template-columns: repeat(5, 60px);
-    grid-template-rows: repeat(5, 60px);
-    gap: 5px;
-    justify-content: center;
-    margin: auto;
-  }
-  
-  .cell {
-    background-color: #ffffff;
-    border: 2px solid #cccccc;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-    font-size: 20px;
-    cursor: pointer;
-    user-select: none;
-    transition: background-color 0.3s ease;
-  }
-  
-  .cell.color-1 {
-    background-color: #f54242;
-    color: white;
-  }
-  
-  .cell.color-2 {
-    background-color: #4287f5;
-    color: white;
-  }
-  
-  button {
-    margin-top: 20px;
-    padding: 10px 20px;
-    background-color: #4CAF50;
-    color: white;
-    border: none;
-    cursor: pointer;
-    font-size: 16px;
-  }
-  
-  button:hover {
-    background-color: #45a049;
-  }
-  
+  font-family: Arial, sans-serif;
+  text-align: center;
+  background-color: #f0f4f8;
+  padding: 20px;
+}
+
+h1 {
+  font-size: 36px;
+  color: #333;
+  margin-bottom: 20px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-weight: bold;
+}
+
+#instructions {
+  font-size: 18px;
+  color: #333;
+  margin-bottom: 20px;
+}
+
+#fileButton {
+  padding: 10px 20px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: 5px;
+  font-family: Arial, sans-serif;
+  transition: background-color 0.3s ease;
+  margin-bottom: 20px;
+}
+
+#fileButton:hover {
+  background-color: #45a049;
+}
+
+#restartButton {
+  padding: 10px 20px;
+  background-color: #f44336;
+  color: white;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: 5px;
+  font-family: Arial, sans-serif;
+  transition: background-color 0.3s ease;
+  margin-top: 20px;
+}
+
+#restartButton:hover {
+  background-color: #e53935;
+}
+
+#cleanButtonContainer {
+  display: none;
+  margin-top: 20px;
+}
+
+.grid-container {
+  display: grid;
+  gap: 5px;
+  justify-content: center;
+  margin: auto;
+}
+
+.cell {
+  background-color: #ffffff;
+  border: 2px solid #cccccc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 20px;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.3s ease;
+}
+
+.cell.color-1 {
+  background-color: #f52c2c;
+  color: white;
+}
+
+.cell.color-2 {
+  background-color: #f3b713;
+  color: white;
+}
+
+.cell.color-3 {
+  background-color: #f1f50e;
+  color: white;
+}
+
+.cell.color-4 {
+  background-color: #3eec12;
+  color: white;
+}
+
+.cell.color-5 {
+  background-color: #0af5e1;
+  color: white;
+}
+
+.cell.color-6 {
+  background-color: #0aa3eb;
+  color: white;
+}
+
+.cell.color-7 {
+  background-color: #1f2df0;
+  color: white;
+}
+
+.cell.color-8 {
+  background-color: #7b13f3;
+  color: white;
+}
+
+.cell.color-9 {
+  background-color: #e20988;
+  color: white;
+}
+
+button {
+  margin-top: 20px;
+  padding: 10px 20px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  border-radius: 5px;
+}
+
+button:hover {
+  background-color: #45a049;
+}

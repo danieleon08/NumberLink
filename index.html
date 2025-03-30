@@ -8,8 +8,27 @@
 </head>
 <body>
   <h1>NumberLink</h1>
+
+  <!-- Instrucciones -->
+  <div id="instructions">
+    <p>Conecta los números con líneas continuas sin que se crucen.</p>
+    <p>Haz clic en las celdas para intentar resolver el puzzle.</p>
+  </div>
+
+  <!-- Botón personalizado para seleccionar archivo -->
+  <button type="button" id="fileButton">Seleccionar archivo</button>
+  <input type="file" id="fileInput" accept=".txt" style="display:none;" />
+
+  <!-- Botón de reiniciar -->
+  <button id="restartButton">Reiniciar Juego</button>
+
+  <!-- Contenedor de la grilla -->
   <div class="grid-container" id="gameGrid"></div>
-  <button id="clearButton">Limpiar</button>
+
+  <!-- Contenedor para el botón Limpiar, que se mostrará después de cargar un archivo -->
+  <div id="cleanButtonContainer" style="display:none;">
+    <button id="clearButton">Limpiar</button>
+  </div>
 
   <script src="script.js"></script>
 </body>

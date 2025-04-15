@@ -25,11 +25,31 @@
   <!-- Contenedor de la grilla -->
   <div class="grid-container" id="gameGrid"></div>
 
-  <!-- Contenedor para el botón Limpiar, que se mostrará después de cargar un archivo -->
-  <div id="cleanButtonContainer" style="display:none;">
-    <button id="clearButton">Limpiar</button>
+  
+  <div class="controles">
+    <!-- Contenedor para el botón Limpiar, que se mostrará después de cargar un archivo -->
+    <div id="cleanButtonContainer">
+      <button id="clearButton">Limpiar</button>
+    </div>
+
+    <!-- Botón para cancelar camino en curso -->
+    <div id="cancelButtonContainer" style="display:none;">
+      <button id="cancelButton">Cancelar camino</button>
+    </div>
   </div>
+ 
+
 
   <script src="script.js"></script>
+
+    <!-- Modal de victoria -->
+  <div id="victoryModal" class="modal">
+    <div class="modal-content">
+      <h2>🎉 ¡Felicidades!</h2>
+      <p>Has completado el juego correctamente.</p>
+      <button id="closeModal">Cerrar</button>
+    </div>
+  </div>
+
 </body>
 </html>

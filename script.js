@@ -2,42 +2,130 @@ const gameGrid = document.getElementById('gameGrid');
 let selectedCell = null;
 let path = [];
 
+let currentPath = [];
+let drawing = false;
+let startValue = null;
+
+
 // Función que se activa al hacer clic en una celda
 function handleCellClick(e) {
   const cell = e.currentTarget;
+  const row = parseInt(cell.dataset.row);
+  const col = parseInt(cell.dataset.col);
+  const value = cell.dataset.value;
 
-  // Si la celda está vacía, cambiar el color de fondo
-  if (cell.dataset.value === "") {
-    // Cambiar el color de fondo de la celda vacía
-    cell.style.backgroundColor = cell.style.backgroundColor === "lightgreen" ? "" : "lightgreen";
-  } else {
-    // Si es una celda con número, cambiar solo el borde
-    if (cell.style.border === "3px solid gold") {
-      cell.style.border = "2px solid #ccc"; // Restablecer el borde si ya está resaltado
+  // Si haces clic en una celda con número
+  if (value !== "") {
+    // Empezar a dibujar si no estás dibujando
+    if (!drawing) {
+      startValue = value;
+      currentPath = [cell];
+      drawing = true;
+      highlightCell(cell, value);
+    }
+    // Intentar cerrar camino
+    else if (value === startValue && cell !== currentPath[0]) {
+      // Validar que la celda final esté adyacente
+      const lastCell = currentPath[currentPath.length - 1];
+      if (isAdjacent(lastCell, cell)) {
+        currentPath.push(cell);
+        highlightCell(cell, value);
+        drawing = false;
+      
+        // Verificamos si el juego fue completado
+        if (checkVictory()) {
+          setTimeout(() => {
+            document.getElementById('victoryModal').style.display = 'block';
+          }, 100);
+        }        
+      
+        // Limpiar estado
+        currentPath = [];
+        startValue = null;
+      }
+      
     } else {
-      cell.style.border = "3px solid gold"; // Resaltar la celda con un borde dorado
+      alert("No puedes conectar con un número distinto o no adyacente.");
     }
   }
+
+  // Si es una celda vacía
+  else if (drawing && value === "") {
+    const lastCell = currentPath[currentPath.length - 1];
+
+    // Validar adyacencia
+    if (!isAdjacent(lastCell, cell)) {
+      alert("Solo puedes avanzar a celdas adyacentes.");
+      return;
+    }
+
+    // Validar que la celda no haya sido ocupada
+    if (cell.classList.length > 1) {
+      alert("Esa celda ya fue ocupada.");
+      return;
+    }
+
+    currentPath.push(cell);
+    highlightCell(cell, startValue);
+  }
+
+  // Permitir retroceso
+  else if (drawing && currentPath.length >= 2 && cell === currentPath[currentPath.length - 2]) {
+    const last = currentPath.pop();
+    clearCell(last);
+  }
 }
+
+
+
+function isAdjacent(cell1, cell2) {
+  const r1 = parseInt(cell1.dataset.row);
+  const c1 = parseInt(cell1.dataset.col);
+  const r2 = parseInt(cell2.dataset.row);
+  const c2 = parseInt(cell2.dataset.col);
+
+  return (Math.abs(r1 - r2) + Math.abs(c1 - c2)) === 1;
+}
+
+function highlightCell(cell, value) {
+  const colorClass = `color-${String(value).trim()}`;
+  cell.classList.add(colorClass);
+  cell.dataset.value = value; // Para que la celda quede registrada como parte del camino
+}
+
+
+function clearCell(cell) {
+  const originalValue = cell.dataset.original;
+
+  if (originalValue === "" || originalValue === undefined) {
+    cell.dataset.value = "";
+    cell.className = "cell"; // Elimina cualquier clase de color
+    cell.style.backgroundColor = "";
+    cell.style.border = "2px solid #cccccc";
+    cell.textContent = "";
+  }
+}
+
 
 // Función para limpiar las celdas y restaurarlas a su estado inicial
 function clearGrid() {
   const cells = gameGrid.querySelectorAll('.cell');
 
   cells.forEach(cell => {
-    // Restaurar color de fondo a blanco para celdas vacías
-    if (cell.dataset.value === "") {
-      cell.style.backgroundColor = "";
+    if (cell.dataset.original === "" || cell.dataset.original === undefined) {
+      clearCell(cell); // solo limpiar si era una celda vacía originalmente
+    } else {
+      // Restaurar solo su borde si es un número original
+      cell.style.border = "2px solid #cccccc";
     }
-
-    // Restaurar borde predeterminado para todas las celdas
-    cell.style.border = "2px solid #cccccc";
   });
 
-  // Resetear el color y borde de las celdas seleccionadas
-  selectedCell = null;
-  path = [];
+  // Resetear variables
+  currentPath = [];
+  startValue = null;
+  drawing = false;
 }
+
 
 // Función para leer el archivo de texto y procesarlo
 function readTextFile(file) {
@@ -89,6 +177,8 @@ function processTextFile(content) {
 
   // Mostrar el botón de limpiar después de cargar el archivo
   document.getElementById('cleanButtonContainer').style.display = 'block'; // Hacer visible el contenedor
+  document.getElementById('cancelButtonContainer').style.display = 'block'; // Hacer visible el contenedor
+  
 }
 
 // Función para generar el tablero dinámicamente
@@ -107,6 +197,8 @@ function generateGrid(rows, cols, gridData) {
       cell.dataset.row = rowIndex;
       cell.dataset.col = colIndex;
       cell.dataset.value = value;
+      cell.dataset.original = value; // Guardamos valor original para limpieza
+
 
       if (value !== "") {
         cell.textContent = value;
@@ -140,6 +232,7 @@ document.getElementById('restartButton').addEventListener('click', function() {
 
   // Ocultar el botón de "Limpiar" hasta que se cargue un archivo
   document.getElementById('cleanButtonContainer').style.display = 'none';
+  document.getElementById('cancelButtonContainer').style.display = 'none';
 
   // Mostrar un mensaje temporal antes de volver a mostrar la grilla
   setTimeout(function() {
@@ -167,3 +260,52 @@ document.getElementById('fileInput').addEventListener('change', function(e) {
     alert("Por favor, carga un archivo .txt");
   }
 });
+
+
+document.getElementById('cancelButton').addEventListener('click', () => {
+  if (!drawing || currentPath.length === 0) {
+    alert("No estás dibujando ningún camino.");
+    return;
+  }
+
+  // Eliminar todas las celdas del camino actual (excepto números originales)
+  for (let i = 1; i < currentPath.length; i++) {
+    clearCell(currentPath[i]);
+  }
+
+  // Restaurar solo el borde de la celda de inicio si era un número
+  const startCell = currentPath[0];
+  if (startCell.dataset.original !== "" && startCell.dataset.original !== undefined) {
+    startCell.style.border = "2px solid #cccccc";
+  } else {
+    clearCell(startCell);
+  }
+
+  // Reiniciar estado de dibujo
+  drawing = false;
+  startValue = null;
+  currentPath = [];
+});
+
+function checkVictory() {
+  const cells = gameGrid.querySelectorAll('.cell');
+
+  for (const cell of cells) {
+    if (!cell.dataset.value || cell.dataset.value === "") {
+      return false; // Hay al menos una celda vacía → no hay victoria
+    }
+  }
+
+  return true; // Todas las celdas están ocupadas correctamente
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  const closeModalBtn = document.getElementById('closeModal');
+  const victoryModal = document.getElementById('victoryModal');
+
+  closeModalBtn.addEventListener('click', () => {
+    victoryModal.style.display = 'none';
+  });
+});
+
+

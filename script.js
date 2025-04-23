@@ -3,7 +3,7 @@ const gameGrid = document.getElementById('gameGrid');
 
 // Variables que almacenan el estado actual del juego
 let selectedCell = null;  // Celda actualmente seleccionada
-let path = [];  // Almacena el camino actual (celdas seleccionadas)
+
 let currentPath = [];  // El camino actual que el jugador está dibujando
 let drawing = false;  // Indica si estamos dibujando un camino
 let startValue = null;  // El valor inicial con el que comenzamos a dibujar el camino
@@ -68,8 +68,6 @@ function handleCellClick(e) {
     }
 }
 
-
-
 // Función para verificar si dos celdas son adyacentes
 function isAdjacent(cell1, cell2) {
   const r1 = parseInt(cell1.dataset.row);  // Fila de la primera celda
@@ -88,40 +86,6 @@ function highlightCell(cell, value) {
   cell.dataset.value = value;  // Registrar el valor de la celda en el atributo data-value
 }
 
-
-
-// Función para limpiar toda la grilla (restaurar celdas a su estado inicial)
-function clearGrid() {
-  const cells = gameGrid.querySelectorAll('.cell');  // Obtener todas las celdas de la grilla
-
-  cells.forEach(cell => {
-    if (cell.dataset.original === "" || cell.dataset.original === undefined) {
-      clearCell(cell);  // Limpiar celdas vacías originalmente
-    } else {
-      cell.style.border = "2px solid #cccccc";  // Restaurar solo el borde de las celdas con números
-    }
-  });
-
-  // Resetear las variables de estado
-  currentPath = [];
-  startValue = null;
-  drawing = false;
-}
-
-
-// Función para limpiar una celda (restaurar su estado original)
-function clearCell(cell) {
-  const originalValue = cell.dataset.original;  // Valor original de la celda
-
-  // Si la celda estaba vacía o sin valor original
-  if (originalValue === "" || originalValue === undefined) {
-    cell.dataset.value = "";  // Eliminar el valor de la celda
-    cell.className = "cell";  // Eliminar cualquier clase de color
-    cell.style.backgroundColor = "";  // Eliminar color de fondo
-    cell.style.border = "2px solid #cccccc";  // Restaurar borde
-    cell.textContent = "";  // Limpiar el texto de la celda
-  }
-}
 
 // Función para leer el archivo de texto y procesarlo
 function readTextFile(file) {
@@ -177,7 +141,8 @@ function processTextFile(content) {
   document.getElementById('cancelButtonContainer').style.display = 'block';  // Mostrar el contenedor de cancelar
 }
 
-// Función para generar el tablero dinámicamente
+
+// Función para generar el tablero dinámicamente en la pantalla
 function generateGrid(rows, cols, gridData) {
   gameGrid.innerHTML = "";  // Limpiar el tablero antes de generar uno nuevo
 
@@ -211,6 +176,20 @@ function generateGrid(rows, cols, gridData) {
       gameGrid.appendChild(cell);  // Añadir la celda al contenedor del tablero
     });
   });
+}
+
+
+// Función para verificar si el juego fue completado
+function checkVictory() {
+  const cells = gameGrid.querySelectorAll('.cell');
+
+  for (const cell of cells) {
+    if (!cell.dataset.value || cell.dataset.value === "") {
+      return false;  // Hay al menos una celda vacía → no hay victoria
+    }
+  }
+
+  return true;  // Todas las celdas están ocupadas correctamente
 }
 
 // Función para reiniciar el juego
@@ -273,19 +252,6 @@ document.getElementById('cancelButton').addEventListener('click', () => {
   currentPath = [];
 });
 
-// Función para verificar si el juego fue completado
-function checkVictory() {
-  const cells = gameGrid.querySelectorAll('.cell');
-
-  for (const cell of cells) {
-    if (!cell.dataset.value || cell.dataset.value === "") {
-      return false;  // Hay al menos una celda vacía → no hay victoria
-    }
-  }
-
-  return true;  // Todas las celdas están ocupadas correctamente
-}
-
 
 // Modal de victoria
 window.addEventListener('DOMContentLoaded', () => {
@@ -296,3 +262,36 @@ window.addEventListener('DOMContentLoaded', () => {
     victoryModal.style.display = 'none';  // Cerrar el modal de victoria
   });
 });
+
+
+// Función para limpiar toda la grilla (restaurar celdas a su estado inicial)
+function clearGrid() {
+  const cells = gameGrid.querySelectorAll('.cell');  // Obtener todas las celdas de la grilla
+
+  cells.forEach(cell => {
+    if (cell.dataset.original === "" || cell.dataset.original === undefined) {
+      clearCell(cell);  // Limpiar celdas vacías originalmente
+    } else {
+      cell.style.border = "2px solid #cccccc";  // Restaurar solo el borde de las celdas con números
+    }
+  });
+
+  // Resetear las variables de estado
+  currentPath = [];
+  startValue = null;
+  drawing = false;
+}
+
+// Función para limpiar una celda (restaurar su estado original)
+function clearCell(cell) {
+  const originalValue = cell.dataset.original;  // Valor original de la celda
+
+  // Si la celda estaba vacía o sin valor original
+  if (originalValue === "" || originalValue === undefined) {
+    cell.dataset.value = "";  // Eliminar el valor de la celda
+    cell.className = "cell";  // Eliminar cualquier clase de color
+    cell.style.backgroundColor = "";  // Eliminar color de fondo
+    cell.style.border = "2px solid #cccccc";  // Restaurar borde
+    cell.textContent = "";  // Limpiar el texto de la celda
+  }
+}

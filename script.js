@@ -1,153 +1,151 @@
+// Obtener el contenedor de la grilla desde el HTML
 const gameGrid = document.getElementById('gameGrid');
-let selectedCell = null;
-let path = [];
 
-let currentPath = [];
-let drawing = false;
-let startValue = null;
-
+// Variables que almacenan el estado actual del juego
+let selectedCell = null;  // Celda actualmente seleccionada
+let path = [];  // Almacena el camino actual (celdas seleccionadas)
+let currentPath = [];  // El camino actual que el jugador está dibujando
+let drawing = false;  // Indica si estamos dibujando un camino
+let startValue = null;  // El valor inicial con el que comenzamos a dibujar el camino
 
 // Función que se activa al hacer clic en una celda
 function handleCellClick(e) {
-  const cell = e.currentTarget;
-  const row = parseInt(cell.dataset.row);
-  const col = parseInt(cell.dataset.col);
-  const value = cell.dataset.value;
+  const cell = e.currentTarget;  // La celda sobre la que se hizo clic
+  const row = parseInt(cell.dataset.row);  // Fila de la celda (desde el atributo data-row)
+  const col = parseInt(cell.dataset.col);  // Columna de la celda (desde el atributo data-col)
+  const value = cell.dataset.value;  // Valor de la celda (el número o vacío)
 
-  // Si haces clic en una celda con número
-  if (value !== "") {
-    // Empezar a dibujar si no estás dibujando
-    if (!drawing) {
-      startValue = value;
-      currentPath = [cell];
-      drawing = true;
-      highlightCell(cell, value);
-    }
-    // Intentar cerrar camino
-    else if (value === startValue && cell !== currentPath[0]) {
-      // Validar que la celda final esté adyacente
-      const lastCell = currentPath[currentPath.length - 1];
-      if (isAdjacent(lastCell, cell)) {
-        currentPath.push(cell);
-        highlightCell(cell, value);
-        drawing = false;
-      
-        // Verificamos si el juego fue completado
-        if (checkVictory()) {
-          setTimeout(() => {
-            document.getElementById('victoryModal').style.display = 'block';
-          }, 100);
-        }        
-      
-        // Limpiar estado
-        currentPath = [];
-        startValue = null;
+    // Si la celda tiene un valor numérico
+    if (value !== "") {
+      // Si no estamos dibujando, comenzamos a dibujar un camino
+      if (!drawing) {
+        startValue = value;  // Guardamos el valor de inicio para el camino
+        currentPath = [cell];  // Iniciamos el camino con la celda seleccionada
+        drawing = true;  // Indicamos que ahora estamos dibujando
+        highlightCell(cell, value);  // Resaltamos la celda seleccionada
       }
-      
-    } else {
-      alert("No puedes conectar con un número distinto o no adyacente.");
+      // Si estamos dibujando y el valor de la celda coincide con el de inicio
+      else if (value === startValue && cell !== currentPath[0]) {
+          const lastCell = currentPath[currentPath.length - 1];  // La última celda del camino
+          if (isAdjacent(lastCell, cell)) {  // Verificamos que la celda esté adyacente
+            currentPath.push(cell);  // Añadimos la celda al camino
+            highlightCell(cell, value);  // Resaltamos la celda
+            drawing = false;  // Terminamos de dibujar el camino
+
+            // Verificamos si el jugador ha ganado
+            if (checkVictory()) {
+              setTimeout(() => {
+                document.getElementById('victoryModal').style.display = 'block';  // Mostramos el modal de victoria
+              }, 100);
+            }
+
+          // Limpiamos las variables de estado
+          currentPath = [];
+          startValue = null;
+        }
+      } else {
+        alert("No puedes conectar con un número distinto o no adyacente.");
+      }
     }
-  }
+    // Si la celda está vacía y estamos dibujando un camino
+    else if (drawing && value === "") {
+      const lastCell = currentPath[currentPath.length - 1];  // La última celda del camino
 
-  // Si es una celda vacía
-  else if (drawing && value === "") {
-    const lastCell = currentPath[currentPath.length - 1];
+          // Verificamos que la celda seleccionada sea adyacente a la última celda
+          if (!isAdjacent(lastCell, cell)) {
+            alert("Solo puedes avanzar a celdas adyacentes.");
+            return;
+          }
 
-    // Validar adyacencia
-    if (!isAdjacent(lastCell, cell)) {
-      alert("Solo puedes avanzar a celdas adyacentes.");
-      return;
+          // Verificamos que la celda no haya sido ocupada
+          if (cell.classList.length > 1) {
+            alert("Esa celda ya fue ocupada.");
+            return;
+          }
+
+          currentPath.push(cell);  // Añadimos la celda al camino
+          highlightCell(cell, startValue);  // Resaltamos la celda
     }
-
-    // Validar que la celda no haya sido ocupada
-    if (cell.classList.length > 1) {
-      alert("Esa celda ya fue ocupada.");
-      return;
-    }
-
-    currentPath.push(cell);
-    highlightCell(cell, startValue);
-  }
-
-  // Permitir retroceso
-  else if (drawing && currentPath.length >= 2 && cell === currentPath[currentPath.length - 2]) {
-    const last = currentPath.pop();
-    clearCell(last);
-  }
 }
 
 
 
+// Función para verificar si dos celdas son adyacentes
 function isAdjacent(cell1, cell2) {
-  const r1 = parseInt(cell1.dataset.row);
-  const c1 = parseInt(cell1.dataset.col);
-  const r2 = parseInt(cell2.dataset.row);
-  const c2 = parseInt(cell2.dataset.col);
+  const r1 = parseInt(cell1.dataset.row);  // Fila de la primera celda
+  const c1 = parseInt(cell1.dataset.col);  // Columna de la primera celda
+  const r2 = parseInt(cell2.dataset.row);  // Fila de la segunda celda
+  const c2 = parseInt(cell2.dataset.col);  // Columna de la segunda celda
 
+  // Las celdas son adyacentes si la diferencia de fila o columna es igual a 1
   return (Math.abs(r1 - r2) + Math.abs(c1 - c2)) === 1;
 }
 
+// Función para resaltar una celda (cambiar su color)
 function highlightCell(cell, value) {
-  const colorClass = `color-${String(value).trim()}`;
-  cell.classList.add(colorClass);
-  cell.dataset.value = value; // Para que la celda quede registrada como parte del camino
+  const colorClass = `color-${String(value).trim()}`;  // Crear una clase de color basada en el valor de la celda
+  cell.classList.add(colorClass);  // Añadir la clase de color a la celda
+  cell.dataset.value = value;  // Registrar el valor de la celda en el atributo data-value
 }
 
 
-function clearCell(cell) {
-  const originalValue = cell.dataset.original;
 
-  if (originalValue === "" || originalValue === undefined) {
-    cell.dataset.value = "";
-    cell.className = "cell"; // Elimina cualquier clase de color
-    cell.style.backgroundColor = "";
-    cell.style.border = "2px solid #cccccc";
-    cell.textContent = "";
-  }
-}
-
-
-// Función para limpiar las celdas y restaurarlas a su estado inicial
+// Función para limpiar toda la grilla (restaurar celdas a su estado inicial)
 function clearGrid() {
-  const cells = gameGrid.querySelectorAll('.cell');
+  const cells = gameGrid.querySelectorAll('.cell');  // Obtener todas las celdas de la grilla
 
   cells.forEach(cell => {
     if (cell.dataset.original === "" || cell.dataset.original === undefined) {
-      clearCell(cell); // solo limpiar si era una celda vacía originalmente
+      clearCell(cell);  // Limpiar celdas vacías originalmente
     } else {
-      // Restaurar solo su borde si es un número original
-      cell.style.border = "2px solid #cccccc";
+      cell.style.border = "2px solid #cccccc";  // Restaurar solo el borde de las celdas con números
     }
   });
 
-  // Resetear variables
+  // Resetear las variables de estado
   currentPath = [];
   startValue = null;
   drawing = false;
 }
 
 
+// Función para limpiar una celda (restaurar su estado original)
+function clearCell(cell) {
+  const originalValue = cell.dataset.original;  // Valor original de la celda
+
+  // Si la celda estaba vacía o sin valor original
+  if (originalValue === "" || originalValue === undefined) {
+    cell.dataset.value = "";  // Eliminar el valor de la celda
+    cell.className = "cell";  // Eliminar cualquier clase de color
+    cell.style.backgroundColor = "";  // Eliminar color de fondo
+    cell.style.border = "2px solid #cccccc";  // Restaurar borde
+    cell.textContent = "";  // Limpiar el texto de la celda
+  }
+}
+
 // Función para leer el archivo de texto y procesarlo
 function readTextFile(file) {
-  const reader = new FileReader();
-  
+  const reader = new FileReader();  // Crear un nuevo lector de archivos
+
+  // Cuando el archivo se haya cargado correctamente
   reader.onload = function(event) {
-    const fileContent = event.target.result;
-    console.log("Contenido del archivo: ", fileContent);  // Verificar el contenido del archivo
-    processTextFile(fileContent);
+    const fileContent = event.target.result;  // Obtener el contenido del archivo
+    console.log("Contenido del archivo: ", fileContent);  // Imprimir el contenido en la consola
+    processTextFile(fileContent);  // Procesar el contenido del archivo
   };
-  
+
+  // Si hay un error al leer el archivo
   reader.onerror = function(error) {
     console.error("Error al leer el archivo: ", error);
   };
 
-  reader.readAsText(file);
+  reader.readAsText(file);  // Leer el archivo como texto
 }
 
 // Función para procesar el contenido del archivo de texto
 function processTextFile(content) {
-  const lines = content.split('\n'); // Dividir el contenido en líneas
-  const size = lines[0].split(','); // Obtener tamaño de la grilla de la primera línea
+  const lines = content.split('\n');  // Dividir el contenido del archivo en líneas
+  const size = lines[0].split(',');  // Obtener tamaño de la grilla (de la primera línea)
   const rows = parseInt(size[0]);
   const cols = parseInt(size[1]);
 
@@ -156,34 +154,32 @@ function processTextFile(content) {
 
   // Procesar las celdas del archivo de texto
   for (let i = 1; i < lines.length; i++) {
-    const cells = lines[i].split(',');
+    const cells = lines[i].split(',');  // Dividir cada línea en celdas
 
-    // Verificar que haya tres valores: fila, columna y valor
-    if (cells.length === 3) {
-      const row = parseInt(cells[0]) - 1; // Restar 1 para convertir de 1-index a 0-index
-      const col = parseInt(cells[1]) - 1; // Restar 1 para convertir de 1-index a 0-index
-      const value = cells[2];  // El valor que debe ir en la celda (ahora correctamente ubicado en cells[2])
+    if (cells.length === 3) {  // Verificar que haya 3 valores: fila, columna, valor
+      const row = parseInt(cells[0]) - 1;  // Convertir de 1-index a 0-index
+      const col = parseInt(cells[1]) - 1;  // Convertir de 1-index a 0-index
+      const value = cells[2];  // El valor que debe ir en la celda
 
       // Asignar el valor a la celda correspondiente
       gridData[row][col] = value;
     }
   }
 
-  // Verificar el contenido de gridData para asegurarse de que los datos sean correctos
+  // Verificar el contenido de gridData
   console.log("Datos procesados del tablero: ", gridData);
 
-  // Llamar a la función que genera el tablero con los datos procesados
+  // Llamar a la función para generar la grilla con los datos procesados
   generateGrid(rows, cols, gridData);
 
   // Mostrar el botón de limpiar después de cargar el archivo
-  document.getElementById('cleanButtonContainer').style.display = 'block'; // Hacer visible el contenedor
-  document.getElementById('cancelButtonContainer').style.display = 'block'; // Hacer visible el contenedor
-  
+  document.getElementById('cleanButtonContainer').style.display = 'block';  // Mostrar el contenedor de limpiar
+  document.getElementById('cancelButtonContainer').style.display = 'block';  // Mostrar el contenedor de cancelar
 }
 
 // Función para generar el tablero dinámicamente
 function generateGrid(rows, cols, gridData) {
-  gameGrid.innerHTML = ""; // Limpiar el tablero
+  gameGrid.innerHTML = "";  // Limpiar el tablero antes de generar uno nuevo
 
   // Establecer el tamaño de las celdas según las dimensiones del tablero
   gameGrid.style.gridTemplateColumns = `repeat(${cols}, 60px)`;
@@ -192,88 +188,78 @@ function generateGrid(rows, cols, gridData) {
   // Crear las celdas con los valores de la grilla
   gridData.forEach((row, rowIndex) => {
     row.forEach((value, colIndex) => {
-      const cell = document.createElement('div');
-      cell.classList.add('cell');
-      cell.dataset.row = rowIndex;
-      cell.dataset.col = colIndex;
-      cell.dataset.value = value;
-      cell.dataset.original = value; // Guardamos valor original para limpieza
+      const cell = document.createElement('div');  // Crear una nueva celda
+      cell.classList.add('cell');  // Añadir clase "cell" a la celda
+      cell.dataset.row = rowIndex;  // Asignar la fila de la celda
+      cell.dataset.col = colIndex;  // Asignar la columna de la celda
+      cell.dataset.value = value;  // Asignar el valor de la celda
+      cell.dataset.original = value;  // Guardar el valor original para restaurar
 
-
+      // Si la celda tiene un valor (no está vacía)
       if (value !== "") {
-        cell.textContent = value;
+        cell.textContent = value;  // Mostrar el valor en la celda
 
-        // Verificar que el valor es un número
+        // Si el valor es un número, asignar un color basado en el valor
         if (!isNaN(value)) {
-          // Eliminar espacios al principio y final sin agregar guiones bajos
           const colorClass = `color-${String(value).trim()}`;
-
-          // Agregar la clase directamente (color-1, color-2, etc.)
-          cell.classList.add(colorClass);
+          cell.classList.add(colorClass);  // Añadir la clase de color
         }
       }
 
+      // Añadir el evento de clic a la celda
       cell.addEventListener('click', handleCellClick);
-      gameGrid.appendChild(cell);
+      gameGrid.appendChild(cell);  // Añadir la celda al contenedor del tablero
     });
   });
 }
 
 // Función para reiniciar el juego
 document.getElementById('restartButton').addEventListener('click', function() {
-  // Limpiar la grilla y restablecer las celdas
-  gameGrid.innerHTML = ""; // Limpiar el tablero
+  gameGrid.innerHTML = "";  // Limpiar el tablero
+  document.getElementById('fileInput').value = "";  // Limpiar el input de archivo
+  gameGrid.style.display = 'none';  // Ocultar la grilla
 
-  // Limpiar el input de archivo
-  document.getElementById('fileInput').value = "";
-
-  // Ocultar la grilla
-  gameGrid.style.display = 'none';
-
-  // Ocultar el botón de "Limpiar" hasta que se cargue un archivo
+  // Ocultar el botón de "Limpiar"
   document.getElementById('cleanButtonContainer').style.display = 'none';
   document.getElementById('cancelButtonContainer').style.display = 'none';
 
-  // Mostrar un mensaje temporal antes de volver a mostrar la grilla
   setTimeout(function() {
-    // Mostrar la grilla nuevamente
-    gameGrid.style.display = 'grid'; // Restaurar el estilo de la grilla
+    gameGrid.style.display = 'grid';  // Mostrar la grilla nuevamente
     alert("Juego reiniciado. Carga un nuevo archivo para comenzar.");
-  }, 200);  // Retardo para el cambio de visualización
+  }, 200);
 });
-
 
 // Agregar el evento al botón "Limpiar"
 document.getElementById('clearButton').addEventListener('click', clearGrid);
 
 // Vincular el botón de "Seleccionar archivo" para activar el input de archivo
 document.getElementById('fileButton').addEventListener('click', function() {
-  document.getElementById('fileInput').click(); // Activa el input de archivo al hacer clic en el botón
+  document.getElementById('fileInput').click();  // Activar el input de archivo
 });
 
 // Agregar evento al input para cargar el archivo
 document.getElementById('fileInput').addEventListener('change', function(e) {
   const file = e.target.files[0];
   if (file && file.name.endsWith('.txt')) {
-    readTextFile(file);
+    readTextFile(file);  // Leer el archivo si es .txt
   } else {
-    alert("Por favor, carga un archivo .txt");
+    alert("Por favor, carga un archivo .txt");  // Validar que el archivo sea .txt
   }
 });
 
-
+// Evento para cancelar el camino en curso
 document.getElementById('cancelButton').addEventListener('click', () => {
   if (!drawing || currentPath.length === 0) {
     alert("No estás dibujando ningún camino.");
     return;
   }
 
-  // Eliminar todas las celdas del camino actual (excepto números originales)
+  // Eliminar todas las celdas del camino actual
   for (let i = 1; i < currentPath.length; i++) {
     clearCell(currentPath[i]);
   }
 
-  // Restaurar solo el borde de la celda de inicio si era un número
+  // Restaurar solo el borde de la celda de inicio
   const startCell = currentPath[0];
   if (startCell.dataset.original !== "" && startCell.dataset.original !== undefined) {
     startCell.style.border = "2px solid #cccccc";
@@ -287,25 +273,26 @@ document.getElementById('cancelButton').addEventListener('click', () => {
   currentPath = [];
 });
 
+// Función para verificar si el juego fue completado
 function checkVictory() {
   const cells = gameGrid.querySelectorAll('.cell');
 
   for (const cell of cells) {
     if (!cell.dataset.value || cell.dataset.value === "") {
-      return false; // Hay al menos una celda vacía → no hay victoria
+      return false;  // Hay al menos una celda vacía → no hay victoria
     }
   }
 
-  return true; // Todas las celdas están ocupadas correctamente
+  return true;  // Todas las celdas están ocupadas correctamente
 }
 
+
+// Modal de victoria
 window.addEventListener('DOMContentLoaded', () => {
   const closeModalBtn = document.getElementById('closeModal');
   const victoryModal = document.getElementById('victoryModal');
 
   closeModalBtn.addEventListener('click', () => {
-    victoryModal.style.display = 'none';
+    victoryModal.style.display = 'none';  // Cerrar el modal de victoria
   });
 });
-
-

@@ -8,65 +8,89 @@ let currentPath = [];  // El camino actual que el jugador está dibujando
 let drawing = false;  // Indica si estamos dibujando un camino
 let startValue = null;  // El valor inicial con el que comenzamos a dibujar el camino
 
+let finalMatrix = [];  // Matriz que representa el estado final de caminos trazados
+
+
 // Función que se activa al hacer clic en una celda
 function handleCellClick(e) {
-  const cell = e.currentTarget;  // La celda sobre la que se hizo clic
-  const row = parseInt(cell.dataset.row);  // Fila de la celda (desde el atributo data-row)
-  const col = parseInt(cell.dataset.col);  // Columna de la celda (desde el atributo data-col)
-  const value = cell.dataset.value;  // Valor de la celda (el número o vacío)
+  const cell = e.currentTarget;
+  const value = cell.dataset.value;
+  const original = cell.dataset.original;
+  const row = parseInt(cell.dataset.row);
+  const col = parseInt(cell.dataset.col);
 
-    // Si la celda tiene un valor numérico
-    if (value !== "") {
-      // Si no estamos dibujando, comenzamos a dibujar un camino
-      if (!drawing) {
-        startValue = value;  // Guardamos el valor de inicio para el camino
-        currentPath = [cell];  // Iniciamos el camino con la celda seleccionada
-        drawing = true;  // Indicamos que ahora estamos dibujando
-        highlightCell(cell, value);  // Resaltamos la celda seleccionada
+  console.log(`Celda seleccionada: Fila ${row + 1}, Columna ${col + 1}, Valor: ${value}`);
+  console.log("Estado de la matriz final: ", finalMatrix);
+  console.log("Estado del camino actual: ", currentPath);
+
+  if (value !== "") {
+    if (!drawing) {
+      // Validar que la celda para iniciar sea principal
+      if (original === "" || original === undefined) {
+        alert("Solo puedes iniciar un camino en una casilla principal.");
+        return;
       }
-      // Si estamos dibujando y el valor de la celda coincide con el de inicio
-      else if (value === startValue && cell !== currentPath[0]) {
-          const lastCell = currentPath[currentPath.length - 1];  // La última celda del camino
-          if (isAdjacent(lastCell, cell)) {  // Verificamos que la celda esté adyacente
-            currentPath.push(cell);  // Añadimos la celda al camino
-            highlightCell(cell, value);  // Resaltamos la celda
-            drawing = false;  // Terminamos de dibujar el camino
 
-            // Verificamos si el jugador ha ganado
-            if (checkVictory()) {
-              setTimeout(() => {
-                document.getElementById('victoryModal').style.display = 'block';  // Mostramos el modal de victoria
-              }, 100);
-            }
+      startValue = value;
+      currentPath = [cell];
+      drawing = true;
+      highlightCell(cell, value);
 
-          // Limpiamos las variables de estado
-          currentPath = [];
-          startValue = null;
+    } else if (value === startValue && cell !== currentPath[0]) {
+      // Validar que la celda para terminar sea principal
+      if (original === "" || original === undefined) {
+        alert("Solo puedes terminar un camino en una casilla principal.");
+        return;
+      }
+
+      const lastCell = currentPath[currentPath.length - 1];
+      if (isAdjacent(lastCell, cell)) {
+        currentPath.push(cell);
+        highlightCell(cell, value);
+
+        savePathInFinalMatrix(currentPath, startValue);
+
+        drawing = false;
+
+        if (checkVictory()) {
+          setTimeout(() => {
+            document.getElementById('victoryModal').style.display = 'block';
+          }, 100);
         }
+
+        currentPath = [];
+        startValue = null;
       } else {
-        alert("No puedes conectar con un número distinto o no adyacente.");
+        alert("La casilla final debe ser adyacente a la última.");
       }
+    } else {
+      alert("No puedes conectar con un número distinto o no adyacente.");
     }
-    // Si la celda está vacía y estamos dibujando un camino
-    else if (drawing && value === "") {
-      const lastCell = currentPath[currentPath.length - 1];  // La última celda del camino
+  } else if (drawing && value === "") {
+    const lastCell = currentPath[currentPath.length - 1];
 
-          // Verificamos que la celda seleccionada sea adyacente a la última celda
-          if (!isAdjacent(lastCell, cell)) {
-            alert("Solo puedes avanzar a celdas adyacentes.");
-            return;
-          }
-
-          // Verificamos que la celda no haya sido ocupada
-          if (cell.classList.length > 1) {
-            alert("Esa celda ya fue ocupada.");
-            return;
-          }
-
-          currentPath.push(cell);  // Añadimos la celda al camino
-          highlightCell(cell, startValue);  // Resaltamos la celda
+    if (!isAdjacent(lastCell, cell)) {
+      alert("Solo puedes avanzar a celdas adyacentes.");
+      return;
     }
+
+    // Verificar que la celda no esté ocupada en finalMatrix
+    if (finalMatrix[row][col] !== "") {
+      alert("Esa celda ya fue ocupada por otro camino.");
+      return;
+    }
+
+    // Verificar que la celda no esté ya en el camino actual (evita loops)
+    if (isCellInCurrentPath(cell)) {
+      alert("No puedes volver a una celda ya seleccionada en el camino actual.");
+      return;
+    }
+
+    currentPath.push(cell);
+    highlightCell(cell, startValue);
+  }
 }
+
 
 // Función para verificar si dos celdas son adyacentes
 function isAdjacent(cell1, cell2) {
@@ -78,6 +102,24 @@ function isAdjacent(cell1, cell2) {
   // Las celdas son adyacentes si la diferencia de fila o columna es igual a 1
   return (Math.abs(r1 - r2) + Math.abs(c1 - c2)) === 1;
 }
+
+
+function isCellInCurrentPath(cellToCheck) {
+  const rowCheck = parseInt(cellToCheck.dataset.row);
+  const colCheck = parseInt(cellToCheck.dataset.col);
+
+  for (const cell of currentPath) {
+    const row = parseInt(cell.dataset.row);
+    const col = parseInt(cell.dataset.col);
+
+    if (row === rowCheck && col === colCheck) {
+      return true;  // Celda ya está en el camino actual
+    }
+  }
+
+  return false;  // Celda no está en el camino
+}
+
 
 // Función para resaltar una celda (cambiar su color)
 function highlightCell(cell, value) {
@@ -150,6 +192,8 @@ function generateGrid(rows, cols, gridData) {
   gameGrid.style.gridTemplateColumns = `repeat(${cols}, 60px)`;
   gameGrid.style.gridTemplateRows = `repeat(${rows}, 60px)`;
 
+  finalMatrix = Array.from({ length: rows }, () => Array(cols).fill(""));
+
   // Crear las celdas con los valores de la grilla
   gridData.forEach((row, rowIndex) => {
     row.forEach((value, colIndex) => {
@@ -178,35 +222,100 @@ function generateGrid(rows, cols, gridData) {
   });
 }
 
+function savePathInFinalMatrix(path, value) {
+  for (const cell of path) {
+    const row = parseInt(cell.dataset.row);
+    const col = parseInt(cell.dataset.col);
+    finalMatrix[row][col] = value;
+  }
+}
 
 // Función para verificar si el juego fue completado
-function checkVictory() {
-  const cells = gameGrid.querySelectorAll('.cell');
 
-  for (const cell of cells) {
-    if (!cell.dataset.value || cell.dataset.value === "") {
-      return false;  // Hay al menos una celda vacía → no hay victoria
+function checkVictory() {
+  const numberPositions = {};
+
+  // Paso 1: Agrupar las posiciones por número
+  for (let r = 0; r < finalMatrix.length; r++) {
+    for (let c = 0; c < finalMatrix[0].length; c++) {
+      const val = finalMatrix[r][c];
+      if (val !== "") {
+        if (!numberPositions[val]) numberPositions[val] = [];
+        numberPositions[val].push([r, c]);
+      }
     }
   }
 
-  return true;  // Todas las celdas están ocupadas correctamente
+  // Paso 2: Verificar que cada número esté conectado en un único grupo
+  for (const num in numberPositions) {
+    const visited = new Set();
+    const queue = [numberPositions[num][0]];
+    visited.add(`${numberPositions[num][0][0]},${numberPositions[num][0][1]}`);
+
+    while (queue.length > 0) {
+      const [r, c] = queue.shift();
+
+      // Revisar vecinos adyacentes
+      for (const [dr, dc] of [[0,1], [1,0], [0,-1], [-1,0]]) {
+        const nr = r + dr, nc = c + dc;
+        if (
+          nr >= 0 && nr < finalMatrix.length &&
+          nc >= 0 && nc < finalMatrix[0].length &&
+          finalMatrix[nr][nc] === num
+        ) {
+          const key = `${nr},${nc}`;
+          if (!visited.has(key)) {
+            visited.add(key);
+            queue.push([nr, nc]);
+          }
+        }
+      }
+    }
+
+    // Si el grupo conectado no cubre todas las celdas de ese número, error
+    if (visited.size !== numberPositions[num].length) {
+      return false;
+    }
+  }
+
+  // Paso 3: Verificar que ninguna celda tenga más de un valor
+  for (let r = 0; r < finalMatrix.length; r++) {
+    for (let c = 0; c < finalMatrix[0].length; c++) {
+      const cell = gameGrid.querySelector(`.cell[data-row="${r}"][data-col="${c}"]`);
+      const val = finalMatrix[r][c];
+      const expected = cell.dataset.value;
+      if (val !== expected) {
+        return false;  // Conflicto detectado
+      }
+    }
+  }
+
+  // Todo está conectado y sin conflictos
+  return true;
 }
 
-// Función para reiniciar el juego
+//Funcion para reiniciar el juego
 document.getElementById('restartButton').addEventListener('click', function() {
-  gameGrid.innerHTML = "";  // Limpiar el tablero
-  document.getElementById('fileInput').value = "";  // Limpiar el input de archivo
-  gameGrid.style.display = 'none';  // Ocultar la grilla
+  gameGrid.innerHTML = "";
+  document.getElementById('fileInput').value = "";
+  gameGrid.style.display = 'none';
 
-  // Ocultar el botón de "Limpiar"
+  // Ocultar controles
   document.getElementById('cleanButtonContainer').style.display = 'none';
   document.getElementById('cancelButtonContainer').style.display = 'none';
 
+  // Limpiar matriz y variables
+  finalMatrix = [];
+  currentPath = [];
+  drawing = false;
+  startValue = null;
+
   setTimeout(function() {
-    gameGrid.style.display = 'grid';  // Mostrar la grilla nuevamente
+    gameGrid.style.display = 'grid';
     alert("Juego reiniciado. Carga un nuevo archivo para comenzar.");
   }, 200);
 });
+
 
 // Agregar el evento al botón "Limpiar"
 document.getElementById('clearButton').addEventListener('click', clearGrid);
@@ -265,22 +374,25 @@ window.addEventListener('DOMContentLoaded', () => {
 
 
 // Función para limpiar toda la grilla (restaurar celdas a su estado inicial)
+
 function clearGrid() {
-  const cells = gameGrid.querySelectorAll('.cell');  // Obtener todas las celdas de la grilla
+  const cells = gameGrid.querySelectorAll('.cell');
 
   cells.forEach(cell => {
     if (cell.dataset.original === "" || cell.dataset.original === undefined) {
-      clearCell(cell);  // Limpiar celdas vacías originalmente
+      clearCell(cell);
     } else {
-      cell.style.border = "2px solid #cccccc";  // Restaurar solo el borde de las celdas con números
+      cell.style.border = "2px solid #cccccc";
     }
   });
 
-  // Resetear las variables de estado
+  // Limpiar matriz y variables de estado
+  finalMatrix = Array.from({ length: finalMatrix.length }, () => Array(finalMatrix[0].length).fill(""));  
   currentPath = [];
   startValue = null;
   drawing = false;
 }
+
 
 // Función para limpiar una celda (restaurar su estado original)
 function clearCell(cell) {

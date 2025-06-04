@@ -7,18 +7,23 @@ const numberLinkSolver = {
   rows: 0,
   cols: 0,
   pairs: [],
-  finalSolutionGrid: [],
   solutionFound: false,
+  maxSteps: 50000, // máximo de pasos por par
+  startTime: 0,
+  timedOut: false,
+  animationDelay: 15, // Tiempo de animación para cada paso
 
   init: function(initialGrid) {
     this.grid = initialGrid.map(row => row.map(cell => cell.trim()));
     this.rows = this.grid.length;
     this.cols = this.grid[0].length;
     this.pairs = this.findPairs(this.grid);
-    this.finalSolutionGrid = this.grid.map(row => row.map(cell => cell));
     this.solutionFound = false;
+    this.timedOut = false;
+    this.startTime = Date.now();
   },
 
+  // Encontrar los pares de números y ordenarlos por distancia Manhattan
   findPairs: function(grid) {
     const pairMap = {};
     for (let r = 0; r < grid.length; r++) {
@@ -26,166 +31,143 @@ const numberLinkSolver = {
         const val = grid[r][c];
         if (val !== '') {
           if (!pairMap[val]) pairMap[val] = [];
-          pairMap[val].push([r,c]);
+          pairMap[val].push([r, c]);
         }
       }
     }
     const pairsArr = Object.keys(pairMap).map(val => {
       const [start, end] = pairMap[val];
-      const dist = Math.abs(start[0]-end[0]) + Math.abs(start[1]-end[1]);
+      const dist = Math.abs(start[0] - end[0]) + Math.abs(start[1] - end[1]);
       return { val, start, end, dist };
-    }).sort((a,b) => a.dist - b.dist);
+    }).sort((a, b) => a.dist - b.dist); // Ordenamos por la distancia Manhattan
 
-    for (const p of pairsArr) {
-      if (!p.start || !p.end) throw new Error(`Número ${p.val} no tiene dos puntos.`);
-    }
     return pairsArr;
   },
 
-  async solve() {
-    this.clearNonFixed();
-
-    const paths = this.pairs.map(p => [p.start]);
-    const doneFlags = Array(this.pairs.length).fill(false);
-
-    const maxSteps = 50000;
-    const stepCount = { count: 0 };
-
-    this.solutionFound = await this.backtrackParallel(paths, doneFlags, stepCount, maxSteps, null);
-
-    return this.solutionFound;
+  // Función para obtener los vecinos adyacentes
+  getNeighbors: function(r, c) {
+    return [[r - 1, c], [r + 1, c], [r, c - 1], [r, c + 1]]
+      .filter(([nr, nc]) => nr >= 0 && nr < this.rows && nc >= 0 && nc < this.cols);
   },
 
-  async backtrackParallel(paths, doneFlags, stepCount, maxSteps, startTime) {
-    if (this.solutionFound) return true;
+  // Verificar la conectividad de los próximos 2 pares
+  async checkNextPairsConnectivity(pairsIndex) {
+    if (pairsIndex + 2 >= this.pairs.length) return true;
 
-    const currentTime = Date.now();
-    if (startTime && (currentTime - startTime) > 2000) {
-      // Timeout, abandona esta rama
-      return false;
-    }
+    const firstPair = this.pairs[pairsIndex];
+    const secondPair = this.pairs[pairsIndex + 1];
 
-    if (stepCount.count > maxSteps) return false;
-    stepCount.count++;
+    // Verificamos si hay caminos viables entre el último punto del primer par y el primero del segundo
+    const [endRow, endCol] = firstPair.end;
+    const [startRow, startCol] = secondPair.start;
 
-    if (doneFlags.every(flag => flag) && this.isGridFull()) {
-      this.solutionFound = true;
-      this.drawSolution();
-      return true;
-    }
+    // Usamos un BFS para verificar si hay conexión
+    const queue = [[endRow, endCol]];
+    const visited = new Set();
+    visited.add(`${endRow},${endCol}`);
 
-    for (let i = 0; i < this.pairs.length; i++) {
-      if (doneFlags[i]) continue;
+    while (queue.length > 0) {
+      const [r, c] = queue.shift();
+      if (r === startRow && c === startCol) return true;
 
-      const {val, end} = this.pairs[i];
-      const path = paths[i];
-      const [r,c] = path[path.length - 1];
-
-      let neighbors = this.getNeighborsSorted(r, c, end[0], end[1]);
-
+      const neighbors = this.getNeighbors(r, c);
       for (const [nr, nc] of neighbors) {
-        if (this.solutionFound) return true;
-
-        if (this.finalSolutionGrid[nr][nc] !== '' && this.finalSolutionGrid[nr][nc] !== val) continue;
-
-        if (path.some(([pr, pc]) => pr === nr && pc === nc)) continue;
-
-        let isOtherPairPoint = false;
-        for (const [j, p] of this.pairs.entries()) {
-          if (j !== i) {
-            const [pStart, pEnd] = [p.start, p.end];
-            if ((pStart[0] === nr && pStart[1] === nc) || (pEnd[0] === nr && pEnd[1] === nc)) {
-              isOtherPairPoint = true;
-              break;
-            }
-          }
+        if (!visited.has(`${nr},${nc}`)) {
+          visited.add(`${nr},${nc}`);
+          queue.push([nr, nc]);
         }
-        if (isOtherPairPoint) continue;
-
-        path.push([nr,nc]);
-        this.finalSolutionGrid[nr][nc] = val;
-        this.updateCellVisual(nr, nc, val, true);
-        await delay(40);  // retardo para animación fluida
-
-        let ended = false;
-        if (nr === end[0] && nc === end[1]) {
-          doneFlags[i] = true;
-          ended = true;
-        }
-
-        const nextStartTime = startTime || Date.now();
-
-        if (await this.backtrackParallel(paths, doneFlags, stepCount, maxSteps, nextStartTime)) {
-          return true;
-        }
-
-        if (ended) doneFlags[i] = false;
-        path.pop();
-        this.finalSolutionGrid[nr][nc] = '';
-        this.updateCellVisual(nr, nc, val, false);
-        await delay(40);
       }
     }
 
     return false;
   },
 
-  getNeighborsSorted: function(r, c, targetR, targetC) {
-    const neighbors = [[r-1,c],[r+1,c],[r,c-1],[r,c+1]]
-      .filter(([nr,nc]) => nr >= 0 && nr < this.rows && nc >= 0 && nc < this.cols);
-
-    neighbors.sort((a,b) => {
-      const distA = Math.abs(a[0] - targetR) + Math.abs(a[1] - targetC);
-      const distB = Math.abs(b[0] - targetR) + Math.abs(b[1] - targetC);
-      return distA - distB;
-    });
-
-    return neighbors;
+  // Resolución con Backtracking
+  async solve() {
+    this.solutionFound = await this.backtrackSolve(0, 0); // Comienza desde el primer par y el primer intento
+    return this.solutionFound;
   },
 
-  clearNonFixed: function() {
-    for (let r=0; r<this.rows; r++) {
-      for (let c=0; c<this.cols; c++) {
-        if (this.grid[r][c] === '') this.finalSolutionGrid[r][c] = '';
+  // Backtracking con verificación de caminos
+  async backtrackSolve(pairIndex, attemptIndex) {
+    if (this.timedOut || pairIndex >= this.pairs.length) {
+      return this.isGridFull();
+    }
+
+    const pair = this.pairs[pairIndex];
+    const path = [pair.start];
+    let foundSolution = false;
+
+    // Intentamos hasta 50 caminos por par
+    for (let i = 0; i < 50; i++) {
+      if (this.timedOut) return false;
+      foundSolution = await this.findPathForPair(path, pair, pairIndex, i);
+      if (foundSolution) break;
+
+      // Si no encontramos solución, volvemos atrás
+      path.pop();
+    }
+
+    if (foundSolution) {
+      if (await this.checkNextPairsConnectivity(pairIndex)) {
+        if (await this.backtrackSolve(pairIndex + 1, 0)) return true;
       }
     }
+
+    return false;
   },
 
-  drawSolution: function() {
-    const cells = document.querySelectorAll('.cell');
-    cells.forEach(cell => {
-      const r = parseInt(cell.dataset.row);
-      const c = parseInt(cell.dataset.col);
-      const val = this.finalSolutionGrid[r][c];
-      const orig = (cell.dataset.original || '').trim();
+  // Encontrar el camino para un par específico
+  async findPathForPair(path, pair, pairIndex, attemptIndex) {
+    const [r, c] = path[path.length - 1];
+    const [endR, endC] = pair.end;
+    const neighbors = this.getNeighborsSorted(r, c, endR, endC);
 
-      cell.className = "cell";
-      if(val !== '') {
-        cell.classList.add(`color-${val}`, 'completed');
-        cell.classList.remove('pathing');
-        cell.textContent = val === orig ? val : '';
-      } else {
-        cell.textContent = '';
+    for (const [nr, nc] of neighbors) {
+      if (this.grid[nr][nc] === '' || (nr === endR && nc === endC)) {
+        path.push([nr, nc]);
+        this.grid[nr][nc] = pair.val;
+        await this.updateCellVisual(nr, nc, pair.val, true);
+
+        if (this.isPathComplete(pair.val)) {
+          return true;
+        }
+
+        if (await this.findPathForPair(path, pair, pairIndex, attemptIndex)) {
+          return true;
+        }
+
+        path.pop();
+        this.grid[nr][nc] = '';
+        await this.updateCellVisual(nr, nc, pair.val, false);
       }
-    });
-
-    if (checkVictory()) {
-      setTimeout(() => {
-        document.getElementById('victoryModal').style.display = 'block';
-      }, 400);
     }
+
+    return false;
   },
 
-  isGridFull: function() {
-    for (let r=0; r<this.rows; r++) {
-      for (let c=0; c<this.cols; c++) {
-        if (this.finalSolutionGrid[r][c] === '') return false;
+  // Verificar si un camino para un par está completo
+  isPathComplete(val) {
+    const pair = this.pairs.find(p => p.val === val);
+    if (!pair) return false;
+    const [startR, startC] = pair.start;
+    const [endR, endC] = pair.end;
+
+    return this.grid[endR][endC] === val;
+  },
+
+  // Verificar si la grilla está llena
+  isGridFull() {
+    for (let r = 0; r < this.rows; r++) {
+      for (let c = 0; c < this.cols; c++) {
+        if (this.grid[r][c] === '') return false;
       }
     }
     return true;
   },
 
-  updateCellVisual: function(row, col, val, isAdding) {
+  // Actualizar la visualización de las celdas
+  async updateCellVisual(row, col, val, isAdding) {
     const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
     if (!cell) return;
     if (isAdding) {
@@ -205,6 +187,7 @@ const numberLinkSolver = {
   }
 };
 
+// Llamar al solver y pasar el tablero inicial
 async function solveNumberLink(initialGrid) {
   numberLinkSolver.init(initialGrid);
   const success = await numberLinkSolver.solve();

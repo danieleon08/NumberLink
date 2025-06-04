@@ -21,6 +21,7 @@ const numberLinkSolver = {
     timedOut: false,
 
     init: function(initialGrid, pairsOrder) {
+        console.log('Inicializando el tablero...');
         this.grid = initialGrid.map(row => [...row]);
         this.rows = this.grid.length;
         this.cols = this.grid[0].length;
@@ -28,11 +29,14 @@ const numberLinkSolver = {
         this.solutionFound = false;
         this.timedOut = false;
         this.startTime = Date.now();
+        console.log('Tablero inicializado:', this.grid);
     },
 
     // Función para encontrar los pares de números en el tablero y ordenarlos por distancia de Manhattan
     findPairsAndSort: function(grid) {
+        console.log('Buscando y ordenando los pares...');
         const pairMap = {};
+
         for (let r = 0; r < grid.length; r++) {
             for (let c = 0; c < grid[0].length; c++) {
                 const val = grid[r][c];
@@ -42,11 +46,30 @@ const numberLinkSolver = {
                 }
             }
         }
-        return Object.keys(pairMap).map(val => {
+
+        const pairs = Object.keys(pairMap).map(val => {
             const [start, end] = pairMap[val];
             const dist = Math.abs(start[0] - end[0]) + Math.abs(start[1] - end[1]);
             return { val, start, end, dist };
-        }).sort((a, b) => a.dist - b.dist);
+        });
+
+        // Ordenar los pares usando alguna heurística
+        pairs.sort((a, b) => a.dist - b.dist);
+        console.log('Pares ordenados:', pairs);
+        return pairs;
+    },
+
+    // Esta función calcula la cantidad de movimientos disponibles para un par
+    getAvailableMoves(pair) {
+        const [startR, startC] = pair.start;
+        const [endR, endC] = pair.end;
+        let availableMoves = 0;
+
+        // Contamos cuántas celdas vacías hay cerca de los extremos del par
+        const neighbors = this.getNeighbors(startR, startC).concat(this.getNeighbors(endR, endC));
+        availableMoves = neighbors.filter(([nr, nc]) => this.grid[nr][nc] === '').length;
+
+        return availableMoves;
     },
 
     // Función para obtener los vecinos de una celda
@@ -57,6 +80,7 @@ const numberLinkSolver = {
 
     // Función para la propagación de restricciones (Regla 1 y Regla 2)
     async propagateConstraints() {
+        console.log('Iniciando propagación de restricciones...');
         let changed = true;
         while (changed) {
             changed = false;
@@ -81,7 +105,6 @@ const numberLinkSolver = {
                     if (this.grid[r][c] === '') {
                         const neighbors = this.getNeighbors(r, c);
                         const emptyNeighbors = neighbors.filter(([nr, nc]) => this.grid[nr][nc] === '');
-
                         if (emptyNeighbors.length === 1) {
                             const coloredNeighbors = neighbors.filter(([nr, nc]) => this.grid[nr][nc] !== '');
                             const potentialOwners = [...new Set(coloredNeighbors.map(([nr, nc]) => this.grid[nr][nc]))];
@@ -97,10 +120,12 @@ const numberLinkSolver = {
                 }
             }
         }
+        console.log('Propagación de restricciones completada.');
     },
 
     // Función para encontrar los extremos de los caminos para un par
     findPathEndpoints: function(val) {
+        console.log(`Buscando extremos del camino para el par ${val}...`);
         const endpoints = [];
         for (let r = 0; r < this.rows; r++) {
             for (let c = 0; c < this.cols; c++) {
@@ -117,33 +142,44 @@ const numberLinkSolver = {
             const pair = this.pairs.find(p => p.val === val);
             if (pair) return [pair.start, pair.end];
         }
+        console.log(`Extremos encontrados para ${val}:`, endpoints);
         return endpoints;
     },
 
     // Función para resolver el problema con backtracking
     async solve() {
+        console.log('Iniciando solución con backtracking...');
         this.solutionFound = await this.backtrackSolve(0);
         if (this.solutionFound) {
+            console.log('Solución encontrada.');
             await this.drawFinalSolution();
+        } else {
+            console.log('No se encontró solución.');
         }
         return this.solutionFound;
     },
 
     // Función de backtracking para resolver el tablero
     async backtrackSolve(pairIndex) {
+        console.log(`Resolviendo par ${pairIndex}...`);
         if (Date.now() - this.startTime > this.timeout) {
             this.timedOut = true;
+            console.log('Tiempo agotado.');
             return false;
         }
+
         if (pairIndex === this.pairs.length) {
+            console.log('Todos los pares han sido resueltos.');
             return this.isGridFull();
         }
+
         const pair = this.pairs[pairIndex];
         return await this.findPathForPair([pair.start], pair, pairIndex);
     },
 
     // Función para encontrar el camino de un par específico
     async findPathForPair(currentPath, pair, pairIndex) {
+        console.log(`Buscando camino para el par ${pair.val}...`);
         if (this.timedOut) return false;
         const [r, c] = currentPath[currentPath.length - 1];
         const [endR, endC] = pair.end;
@@ -171,6 +207,7 @@ const numberLinkSolver = {
                 await this.updateCellVisual(nr, nc, pair.val, false);
             }
         }
+        console.log(`No se encontró camino para el par ${pair.val}.`);
         return false;
     },
 
@@ -256,7 +293,6 @@ const numberLinkSolver = {
     },
 };
 
-// Función principal que orquesta el proceso de resolución
 async function solveNumberLink(initialGrid) {
     clearGrid();
     console.log("Iniciando resolución automática...");
@@ -272,8 +308,8 @@ async function solveNumberLink(initialGrid) {
 
     let success = false;
     const strategies = [
-        { name: 'Defecto', pairs: originalPairs },
-        { name: 'Aleatorio', pairs: [...originalPairs].sort(() => Math.random() - 0.5) },
+        { name: 'Menos flexibles primero', pairs: originalPairs },
+        { name: 'Aleatorio', pairs: shuffleArray([...originalPairs]) },
         { name: 'Inverso', pairs: [...originalPairs].reverse() }
     ];
 

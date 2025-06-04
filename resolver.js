@@ -30,14 +30,12 @@ const numberLinkSolver = {
         }
       }
     }
-    // Convertir a array ordenado por distancia manhattan ascendente
     const pairsArr = Object.keys(pairMap).map(val => {
       const [start, end] = pairMap[val];
       const dist = Math.abs(start[0]-end[0]) + Math.abs(start[1]-end[1]);
       return { val, start, end, dist };
     }).sort((a,b) => a.dist - b.dist);
 
-    // Validar que todos tengan dos puntos
     for (const p of pairsArr) {
       if (!p.start || !p.end) throw new Error(`Número ${p.val} no tiene dos puntos.`);
     }
@@ -47,45 +45,51 @@ const numberLinkSolver = {
   async solve() {
     this.clearNonFixed();
 
-    // Estado inicial: un path por par, empezando en start
     const paths = this.pairs.map(p => [p.start]);
     const doneFlags = Array(this.pairs.length).fill(false);
 
-    this.solutionFound = await this.backtrackParallel(paths, doneFlags);
+    const maxSteps = 50000;
+    const stepCount = { count: 0 };
+
+    this.solutionFound = await this.backtrackParallel(paths, doneFlags, stepCount, maxSteps, null);
 
     return this.solutionFound;
   },
 
-  async backtrackParallel(paths, doneFlags) {
+  async backtrackParallel(paths, doneFlags, stepCount, maxSteps, startTime) {
     if (this.solutionFound) return true;
 
-    // Si todos están terminados y matriz llena => solución encontrada
+    const currentTime = Date.now();
+    if (startTime && (currentTime - startTime) > 2000) {
+      // Timeout, abandona esta rama
+      return false;
+    }
+
+    if (stepCount.count > maxSteps) return false;
+    stepCount.count++;
+
     if (doneFlags.every(flag => flag) && this.isGridFull()) {
       this.solutionFound = true;
       this.drawSolution();
       return true;
     }
 
-    // Para cada par aún no terminado, intentar extender su camino
-    for (let i=0; i < this.pairs.length; i++) {
+    for (let i = 0; i < this.pairs.length; i++) {
       if (doneFlags[i]) continue;
 
       const {val, end} = this.pairs[i];
       const path = paths[i];
       const [r,c] = path[path.length - 1];
 
-      const neighbors = this.getNeighborsSorted(r,c, end[0], end[1]);
+      let neighbors = this.getNeighborsSorted(r, c, end[0], end[1]);
 
       for (const [nr, nc] of neighbors) {
         if (this.solutionFound) return true;
 
-        // Validaciones de paso:
         if (this.finalSolutionGrid[nr][nc] !== '' && this.finalSolutionGrid[nr][nc] !== val) continue;
 
-        // No retroceder en el mismo camino
         if (path.some(([pr, pc]) => pr === nr && pc === nc)) continue;
 
-        // No pisar puntos de otros pares
         let isOtherPairPoint = false;
         for (const [j, p] of this.pairs.entries()) {
           if (j !== i) {
@@ -98,30 +102,28 @@ const numberLinkSolver = {
         }
         if (isOtherPairPoint) continue;
 
-        // Extender camino
         path.push([nr,nc]);
         this.finalSolutionGrid[nr][nc] = val;
         this.updateCellVisual(nr, nc, val, true);
-        await delay(30);
+        await delay(40);  // retardo para animación fluida
 
-        // Si llegamos al destino, marcar done
         let ended = false;
         if (nr === end[0] && nc === end[1]) {
           doneFlags[i] = true;
           ended = true;
         }
 
-        // Recurse
-        if (await this.backtrackParallel(paths, doneFlags)) {
+        const nextStartTime = startTime || Date.now();
+
+        if (await this.backtrackParallel(paths, doneFlags, stepCount, maxSteps, nextStartTime)) {
           return true;
         }
 
-        // Backtrack
         if (ended) doneFlags[i] = false;
         path.pop();
         this.finalSolutionGrid[nr][nc] = '';
         this.updateCellVisual(nr, nc, val, false);
-        await delay(30);
+        await delay(40);
       }
     }
 
@@ -160,6 +162,7 @@ const numberLinkSolver = {
       cell.className = "cell";
       if(val !== '') {
         cell.classList.add(`color-${val}`, 'completed');
+        cell.classList.remove('pathing');
         cell.textContent = val === orig ? val : '';
       } else {
         cell.textContent = '';
@@ -190,6 +193,7 @@ const numberLinkSolver = {
       cell.textContent = "";
     } else {
       const originalVal = (cell.dataset.original || "").trim();
+      cell.classList.remove('pathing');
       if (originalVal !== "") {
         cell.className = `cell color-${originalVal}`;
         cell.textContent = originalVal;

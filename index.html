@@ -22,6 +22,9 @@
   <!-- Botón de reiniciar -->
   <button id="restartButton">Reiniciar Juego</button>
 
+  <button id="solveButton">Resolver automáticamente</button>
+
+
   <!-- Contenedor de la grilla -->
   <div class="grid-container" id="gameGrid"></div>
 
@@ -38,7 +41,11 @@
     </div>
   </div>
 
-  <script src="script.js"></script>
+ <!-- Tu script principal debe ir primero -->
+<script src="script.js"></script>
+
+<!-- El script del solver debe ir después, para que pueda usar funciones ya definidas -->
+<script src="resolver.js"></script>
 
     <!-- Modal de victoria -->
   <div id="victoryModal" class="modal">
